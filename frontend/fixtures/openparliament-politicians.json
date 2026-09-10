@@ -1,0 +1,16 @@
+{
+  "meta": { "limit": 20, "offset": 0, "total_count": 2 },
+  "objects": [
+    {
+      "name": "Jane Test-MP",
+      "url": "/politicians/jane-test-mp/",
+      "party": { "short_name": { "en": "Liberal" } },
+      "current_riding": { "name": { "en": "Rivière-du-Nord" } },
+      "image": "https://example.org/photos/jane-test-mp.jpg"
+    },
+    {
+      "name": "No Riding Person",
+      "url": "/politicians/no-riding-person/"
+    }
+  ]
+}
