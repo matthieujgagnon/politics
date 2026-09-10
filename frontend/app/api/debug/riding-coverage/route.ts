@@ -1,4 +1,4 @@
-import { findByRidingName } from "@/lib/riding-match";
+import { findByRidingName, normalizeRidingName } from "@/lib/riding-match";
 import { getCurrentPoliticians } from "@/lib/sources/openparliament";
 import { fetchJson } from "@/lib/http";
 
@@ -30,17 +30,23 @@ export async function GET() {
   ]);
 
   const boundaries = boundariesData.objects ?? [];
-  const unmatchedRidings: string[] = [];
+  const unmatched: { representRiding: string; normalized: string }[] = [];
 
   for (const b of boundaries) {
     const match = findByRidingName(b.name, politicians);
-    if (!match) unmatchedRidings.push(b.name);
+    if (!match) unmatched.push({ representRiding: b.name, normalized: normalizeRidingName(b.name) });
   }
+
+  const openParliamentRidingNames = politicians
+    .map((p) => p.ridingName)
+    .filter((n): n is string => n !== null)
+    .sort((a, b) => a.localeCompare(b));
 
   return Response.json({
     totalRidingsChecked: boundaries.length,
     totalCurrentPoliticians: politicians.length,
-    matchedCount: boundaries.length - unmatchedRidings.length,
-    unmatchedRidings,
+    matchedCount: boundaries.length - unmatched.length,
+    unmatched,
+    openParliamentRidingNames,
   });
 }
