@@ -1,20 +1,22 @@
 {
   "objects": [
     {
-      "ballot": "Yes",
-      "vote": {
-        "date": "2026-03-12",
-        "url": "/votes/45-1/123/",
-        "description": { "en": "An Act to amend the National Housing Strategy" },
-        "bill": { "number": "C-211" }
-      }
+      "vote_url": "/votes/45-1/173/",
+      "politician_url": "/politicians/marie-gabrielle-menard/",
+      "politician_membership_url": "/politicians/memberships/4699/",
+      "ballot": "Yes"
     },
     {
-      "ballot": "No",
-      "date": "2026-02-26",
-      "url": "/votes/45-1/110/",
-      "description": { "en": "Budget Implementation Act" },
-      "bill": { "number": "C-198" }
+      "vote_url": "/votes/45-1/110/",
+      "politician_url": "/politicians/marie-gabrielle-menard/",
+      "politician_membership_url": "/politicians/memberships/4699/",
+      "ballot": "No"
     }
-  ]
+  ],
+  "pagination": {
+    "offset": 0,
+    "limit": 20,
+    "next_url": null,
+    "previous_url": null
+  }
 }
