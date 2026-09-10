@@ -40,6 +40,22 @@ function firstString(...vals: unknown[]): string | null {
   return null;
 }
 
+// Confirmed live (2026-09): the API returns politician photo paths as
+// site-relative ("/media/polpics/...") rather than absolute URLs, so they
+// need a domain to actually load in a browser. Best guess at which domain
+// serves /media/ - openparliament.ca is the canonical site (matches how
+// the `url` field's /politicians/slug/ paths resolve), api.openparliament.ca
+// is the other real candidate since that's literally where this data came
+// from. Confirm the image actually renders after deploying; if it 404s,
+// swap this to api.openparliament.ca.
+const MEDIA_ORIGIN = "https://openparliament.ca";
+
+function withMediaOrigin(path: string | null): string | null {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${MEDIA_ORIGIN}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
 function dig(obj: unknown, path: string[]): unknown {
   let cur: unknown = obj;
   for (const key of path) {
@@ -75,7 +91,7 @@ export function parsePoliticianSummary(entry: Record<string, unknown>): Politici
     dig(entry, ["current_riding", "name"])
   );
 
-  const photoUrl = firstString(entry.image, entry.photo_url);
+  const photoUrl = withMediaOrigin(firstString(entry.image, entry.photo_url));
 
   return { slug, name, party, ridingName, photoUrl };
 }
