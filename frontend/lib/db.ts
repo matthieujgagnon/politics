@@ -2,7 +2,10 @@ import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 
-const DB_DIR = path.join(process.cwd(), ".data");
+// DB_DIR lets a host with a mounted persistent disk (e.g. Render) point
+// this at the disk's mount path via an env var, instead of the app
+// guessing where that host's filesystem layout puts process.cwd().
+const DB_DIR = process.env.DB_DIR ?? path.join(process.cwd(), ".data");
 const DB_PATH = path.join(DB_DIR, "app.db");
 const SCHEMA_PATH = path.join(process.cwd(), "db", "schema.sql");
 
