@@ -23,7 +23,17 @@ CREATE TABLE IF NOT EXISTS politicians (
 
 CREATE TABLE IF NOT EXISTS politician_votes (
   politician_slug TEXT PRIMARY KEY,
-  raw_votes TEXT NOT NULL,          -- full Open Parliament votes response
+  raw_votes TEXT NOT NULL,          -- full Open Parliament ballots-list response
+  fetched_at TEXT NOT NULL
+);
+
+-- A recorded vote's facts (date, bill, description) never change once
+-- cast, so this cache has no TTL - once a vote_url is cached, it's
+-- considered fresh forever. Separate from politician_votes because a
+-- single vote is shared across every MP who cast a ballot on it.
+CREATE TABLE IF NOT EXISTS vote_details (
+  vote_url TEXT PRIMARY KEY,
+  raw_detail TEXT NOT NULL,         -- full Open Parliament vote-detail response
   fetched_at TEXT NOT NULL
 );
 

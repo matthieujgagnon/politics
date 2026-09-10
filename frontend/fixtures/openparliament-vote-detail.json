@@ -1,0 +1,24 @@
+{
+  "bill_url": "/bills/45-1/C-30/",
+  "session": "45-1",
+  "number": 173,
+  "date": "2026-06-18",
+  "description": {
+    "en": "3rd reading and adoption of Bill C-30, An Act to implement certain provisions of the spring economic update tabled in Parliament on April 28, 2026",
+    "fr": "3e lecture et adoption du projet de loi C-30, Loi portant exécution de certaines dispositions de la mise à jour économique du printemps déposée au Parlement le 28 avril 2026"
+  },
+  "result": "Passed",
+  "yea_total": 166,
+  "nay_total": 159,
+  "paired_total": 12,
+  "context_statement": "/debates/2026/6/18/procedural-4/",
+  "party_votes": [
+    { "vote": "No", "disagreement": 0.0, "party": { "name": { "en": "Conservative Party of Canada" }, "short_name": { "en": "Conservative" } } },
+    { "vote": "Yes", "disagreement": 0.0, "party": { "name": { "en": "Liberal Party of Canada" }, "short_name": { "en": "Liberal" } } }
+  ],
+  "url": "/votes/45-1/173/",
+  "related": {
+    "ballots_url": "/votes/ballots/?vote=%2Fvotes%2F45-1%2F173%2F",
+    "votes_url": "/votes/"
+  }
+}

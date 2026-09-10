@@ -3,19 +3,15 @@ import { fetchJson } from "@/lib/http";
 
 const BASE = "https://api.openparliament.ca";
 const POLITICIAN_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
-const VOTES_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+const BALLOTS_CACHE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
-// --- Everything in this file was written against openparliament.ca's
-// documented resource list (politicians / votes / bills / debates /
-// committees, JSON, filterable) but NOT against a live response, because
-// outbound network access to api.openparliament.ca was blocked in the
-// sandbox this was built in. Field extraction below tries several
-// plausible key paths per field and keeps the raw response cached
-// alongside the parsed result, specifically so a wrong guess here doesn't
-// lose data or crash - it just parses as null and the raw JSON is right
-// there to fix the path from. `getPoliticianVotes` is the least certain
-// piece (the ballots endpoint URL/params are a best guess) and degrades
-// to an empty, clearly-marked-unavailable result rather than throwing.
+// --- Politician list/detail and the vote-ballots/vote-detail shapes
+// below are confirmed against live responses (2026-09). Field extraction
+// still tries a couple of plausible fallback paths per field where the
+// live shape wasn't checked for every entry, and keeps the raw response
+// cached alongside the parsed result, so a wrong guess doesn't lose data
+// or crash - it just parses as null and the raw JSON is right there to
+// fix the path from.
 
 export interface PoliticianSummary {
   slug: string;
@@ -40,20 +36,19 @@ function firstString(...vals: unknown[]): string | null {
   return null;
 }
 
-// Confirmed live (2026-09): the API returns politician photo paths as
-// site-relative ("/media/polpics/...") rather than absolute URLs, so they
-// need a domain to actually load in a browser. Best guess at which domain
-// serves /media/ - openparliament.ca is the canonical site (matches how
-// the `url` field's /politicians/slug/ paths resolve), api.openparliament.ca
-// is the other real candidate since that's literally where this data came
-// from. Confirm the image actually renders after deploying; if it 404s,
-// swap this to api.openparliament.ca.
-const MEDIA_ORIGIN = "https://openparliament.ca";
+// Confirmed live (2026-09): both photo paths and page URLs (vote pages,
+// etc.) come back site-relative ("/media/polpics/...", "/votes/45-1/173/")
+// rather than absolute, so they need a domain to actually load/link
+// correctly in a browser. openparliament.ca (not the api. subdomain) is
+// confirmed correct for photos (visually verified after deploy); using
+// the same origin for other relative page paths since they're all part
+// of the same canonical site.
+const SITE_ORIGIN = "https://openparliament.ca";
 
-function withMediaOrigin(path: string | null): string | null {
+function withSiteOrigin(path: string | null): string | null {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
-  return `${MEDIA_ORIGIN}${path.startsWith("/") ? "" : "/"}${path}`;
+  return `${SITE_ORIGIN}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 
 function dig(obj: unknown, path: string[]): unknown {
@@ -91,7 +86,7 @@ export function parsePoliticianSummary(entry: Record<string, unknown>): Politici
     dig(entry, ["current_riding", "name"])
   );
 
-  const photoUrl = withMediaOrigin(firstString(entry.image, entry.photo_url));
+  const photoUrl = withSiteOrigin(firstString(entry.image, entry.photo_url));
 
   return { slug, name, party, ridingName, photoUrl };
 }
@@ -149,18 +144,52 @@ export async function getPoliticianDetail(
   return { ...parsed, url, raw };
 }
 
-export function parseVotesResponse(data: { objects?: unknown[] }): VoteRecord[] {
+interface Ballot {
+  voteUrl: string;
+  position: string | null;
+}
+
+/** Exported for direct unit testing against fixtures - see openparliament.test.ts. */
+export function parseBallotsResponse(data: { objects?: unknown[] }): Ballot[] {
   const objects = Array.isArray(data.objects) ? data.objects : [];
-  return objects.map((o) => {
-    const entry = o as Record<string, unknown>;
-    return {
-      date: firstString(dig(entry, ["vote", "date"]), entry.date),
-      billNumber: firstString(dig(entry, ["vote", "bill", "number"]), dig(entry, ["bill", "number"])),
-      description: firstString(dig(entry, ["vote", "description", "en"]), dig(entry, ["description", "en"])),
-      position: firstString(entry.ballot, entry.vote_value),
-      sourceUrl: firstString(dig(entry, ["vote", "url"]), entry.url),
-    };
-  });
+  return objects
+    .map((o) => {
+      const entry = o as Record<string, unknown>;
+      const voteUrl = firstString(entry.vote_url);
+      return voteUrl ? { voteUrl, position: firstString(entry.ballot) } : null;
+    })
+    .filter((b): b is Ballot => b !== null);
+}
+
+function billNumberFromUrl(url: string | null): string | null {
+  // "/bills/45-1/C-30/" -> "C-30"
+  return url?.match(/\/bills\/[^/]+\/([^/]+)\/?$/)?.[1] ?? null;
+}
+
+/** Exported for direct unit testing against fixtures - see openparliament.test.ts. */
+export function parseVoteDetail(raw: Record<string, unknown>): Omit<VoteRecord, "position"> {
+  return {
+    date: firstString(raw.date),
+    billNumber: billNumberFromUrl(firstString(raw.bill_url)),
+    description: firstString(dig(raw, ["description", "en"])),
+    sourceUrl: withSiteOrigin(firstString(raw.url)),
+  };
+}
+
+async function getVoteDetail(voteUrl: string): Promise<Omit<VoteRecord, "position">> {
+  const db = getDb();
+  // No TTL: a recorded vote's facts don't change once cast.
+  const cached = db.prepare("SELECT raw_detail FROM vote_details WHERE vote_url = ?").get(voteUrl) as
+    | { raw_detail: string }
+    | undefined;
+  if (cached) return parseVoteDetail(JSON.parse(cached.raw_detail));
+
+  const raw = (await fetchJson(`${BASE}${voteUrl}?format=json`)) as Record<string, unknown>;
+  db.prepare(
+    `INSERT INTO vote_details (vote_url, raw_detail, fetched_at) VALUES (?, ?, ?)
+     ON CONFLICT(vote_url) DO UPDATE SET raw_detail = excluded.raw_detail, fetched_at = excluded.fetched_at`
+  ).run(voteUrl, JSON.stringify(raw), new Date().toISOString());
+  return parseVoteDetail(raw);
 }
 
 export async function getPoliticianVotes(
@@ -172,22 +201,33 @@ export async function getPoliticianVotes(
     .prepare("SELECT raw_votes, fetched_at FROM politician_votes WHERE politician_slug = ?")
     .get(slug) as { raw_votes: string; fetched_at: string } | undefined;
 
-  if (cached && Date.now() - Date.parse(cached.fetched_at) < VOTES_CACHE_MAX_AGE_MS) {
-    return { votes: parseVotesResponse(JSON.parse(cached.raw_votes)), available: true };
+  let ballots: Ballot[];
+  if (cached && Date.now() - Date.parse(cached.fetched_at) < BALLOTS_CACHE_MAX_AGE_MS) {
+    ballots = parseBallotsResponse(JSON.parse(cached.raw_votes));
+  } else {
+    try {
+      const data = await fetchJson<{ objects?: unknown[] }>(
+        `${BASE}/votes/ballots/?politician=${encodeURIComponent(politicianUrl)}&format=json&limit=20`
+      );
+      db.prepare(
+        `INSERT INTO politician_votes (politician_slug, raw_votes, fetched_at) VALUES (?, ?, ?)
+         ON CONFLICT(politician_slug) DO UPDATE SET raw_votes = excluded.raw_votes, fetched_at = excluded.fetched_at`
+      ).run(slug, JSON.stringify(data), new Date().toISOString());
+      ballots = parseBallotsResponse(data);
+    } catch {
+      return { votes: [], available: false };
+    }
   }
 
   try {
-    const data = await fetchJson<{ objects?: unknown[] }>(
-      `${BASE}/votes/ballots/?politician=${encodeURIComponent(politicianUrl)}&format=json&limit=20`
-    );
-    db.prepare(
-      `INSERT INTO politician_votes (politician_slug, raw_votes, fetched_at) VALUES (?, ?, ?)
-       ON CONFLICT(politician_slug) DO UPDATE SET raw_votes = excluded.raw_votes, fetched_at = excluded.fetched_at`
-    ).run(slug, JSON.stringify(data), new Date().toISOString());
-    return { votes: parseVotesResponse(data), available: true };
+    const details = await Promise.all(ballots.map((b) => getVoteDetail(b.voteUrl)));
+    return { votes: ballots.map((b, i) => ({ ...details[i], position: b.position })), available: true };
   } catch {
-    // Best-effort endpoint guess failed - render the rest of the profile
-    // rather than failing the whole page. See file header.
-    return { votes: [], available: false };
+    // Ballots list came through but per-vote detail fetches failed -
+    // degrade to position-only rows rather than losing the whole table.
+    return {
+      votes: ballots.map((b) => ({ date: null, billNumber: null, description: null, sourceUrl: null, position: b.position })),
+      available: true,
+    };
   }
 }

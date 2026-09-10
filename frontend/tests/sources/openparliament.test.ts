@@ -1,17 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { parsePoliticianSummary, parseVotesResponse } from "@/lib/sources/openparliament";
+import { parsePoliticianSummary, parseBallotsResponse, parseVoteDetail } from "@/lib/sources/openparliament";
 import politicians from "../../fixtures/openparliament-politicians.json";
-import votes from "../../fixtures/openparliament-votes.json";
+import ballots from "../../fixtures/openparliament-votes.json";
+import voteDetail from "../../fixtures/openparliament-vote-detail.json";
 
 describe("parsePoliticianSummary", () => {
-  it("extracts slug/name/party/riding/photo from a full entry", () => {
+  it("extracts slug/name/party/riding from a full entry, and makes the relative photo path absolute", () => {
     const entry = politicians.objects[0] as Record<string, unknown>;
     expect(parsePoliticianSummary(entry)).toEqual({
       slug: "jane-test-mp",
       name: "Jane Test-MP",
       party: "Liberal",
       ridingName: "Rivière-du-Nord",
-      photoUrl: "https://example.org/photos/jane-test-mp.jpg",
+      photoUrl: "https://openparliament.ca/media/polpics/jane-test-mp.jpg",
     });
   });
 
@@ -29,28 +30,40 @@ describe("parsePoliticianSummary", () => {
   });
 });
 
-describe("parseVotesResponse", () => {
-  it("extracts vote records from both nested (vote.*) and flat shapes", () => {
-    const result = parseVotesResponse(votes);
-    expect(result).toEqual([
-      {
-        date: "2026-03-12",
-        billNumber: "C-211",
-        description: "An Act to amend the National Housing Strategy",
-        position: "Yes",
-        sourceUrl: "/votes/45-1/123/",
-      },
-      {
-        date: "2026-02-26",
-        billNumber: "C-198",
-        description: "Budget Implementation Act",
-        position: "No",
-        sourceUrl: "/votes/45-1/110/",
-      },
+describe("parseBallotsResponse", () => {
+  it("extracts vote_url and ballot position from each entry", () => {
+    expect(parseBallotsResponse(ballots)).toEqual([
+      { voteUrl: "/votes/45-1/173/", position: "Yes" },
+      { voteUrl: "/votes/45-1/110/", position: "No" },
     ]);
   });
 
   it("returns an empty array when the response has no objects", () => {
-    expect(parseVotesResponse({})).toEqual([]);
+    expect(parseBallotsResponse({})).toEqual([]);
+  });
+
+  it("skips an entry with no vote_url rather than producing a broken row", () => {
+    expect(parseBallotsResponse({ objects: [{ ballot: "Yes" }] })).toEqual([]);
+  });
+});
+
+describe("parseVoteDetail", () => {
+  it("extracts date, bill number (from bill_url), description, and an absolute source URL", () => {
+    expect(parseVoteDetail(voteDetail)).toEqual({
+      date: "2026-06-18",
+      billNumber: "C-30",
+      description:
+        "3rd reading and adoption of Bill C-30, An Act to implement certain provisions of the spring economic update tabled in Parliament on April 28, 2026",
+      sourceUrl: "https://openparliament.ca/votes/45-1/173/",
+    });
+  });
+
+  it("returns nulls for missing fields rather than throwing", () => {
+    expect(parseVoteDetail({})).toEqual({
+      date: null,
+      billNumber: null,
+      description: null,
+      sourceUrl: null,
+    });
   });
 });
