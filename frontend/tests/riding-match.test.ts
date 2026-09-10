@@ -41,4 +41,23 @@ describe("findByRidingName", () => {
   it("skips candidates with a null riding name rather than throwing", () => {
     expect(findByRidingName("", candidates)).toBeNull();
   });
+
+  it("falls back to a substring match when a riding was renamed between sources", () => {
+    // Real case hit in production: Represent returns "Hochelaga" for a
+    // postal code; Open Parliament's current riding for that seat is
+    // "Hochelaga—Rosemont-Est" post-redistribution.
+    const renamed = [
+      { slug: "d", ridingName: "Hochelaga—Rosemont-Est" },
+      { slug: "e", ridingName: "Rosemont—La Petite-Patrie" },
+    ];
+    expect(findByRidingName("Hochelaga", renamed)?.slug).toBe("d");
+  });
+
+  it("prefers an exact match over a substring match when both exist", () => {
+    const both = [
+      { slug: "short", ridingName: "Hochelaga" },
+      { slug: "long", ridingName: "Hochelaga—Rosemont-Est" },
+    ];
+    expect(findByRidingName("Hochelaga", both)?.slug).toBe("short");
+  });
 });
