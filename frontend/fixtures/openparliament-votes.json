@@ -1,0 +1,20 @@
+{
+  "objects": [
+    {
+      "ballot": "Yes",
+      "vote": {
+        "date": "2026-03-12",
+        "url": "/votes/45-1/123/",
+        "description": { "en": "An Act to amend the National Housing Strategy" },
+        "bill": { "number": "C-211" }
+      }
+    },
+    {
+      "ballot": "No",
+      "date": "2026-02-26",
+      "url": "/votes/45-1/110/",
+      "description": { "en": "Budget Implementation Act" },
+      "bill": { "number": "C-198" }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "boundaries_concordance": [
+    {
+      "name": "Rivière-du-Nord",
+      "province": "QC",
+      "code": "24"
+    }
+  ],
+  "boundaries_centroid": [
+    {
+      "name": "Rivière-du-Nord (centroid match)",
+      "province": "QC"
+    }
+  ]
+}

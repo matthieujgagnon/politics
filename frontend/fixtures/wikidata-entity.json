@@ -1,0 +1,23 @@
+{
+  "id": "Q999999",
+  "claims": {
+    "P39": [
+      {
+        "mainsnak": { "datavalue": { "value": { "id": "Q15964890" } } },
+        "qualifiers": {
+          "P768": [{ "mainsnak": { "datavalue": { "value": { "id": "Q7654321" } } } }]
+        }
+      },
+      {
+        "mainsnak": { "datavalue": { "value": { "id": "Q83307" } } }
+      }
+    ],
+    "P106": [{ "mainsnak": { "datavalue": { "value": { "id": "Q40348" } } } }],
+    "P2002": [{ "mainsnak": { "datavalue": { "value": "janetestmp" } } }],
+    "P856": [{ "mainsnak": { "datavalue": { "value": "https://janetestmp.ca" } } }]
+  },
+  "sitelinks": {
+    "enwiki": { "title": "Jane Test-MP" },
+    "frwiki": { "title": "Jane Test-MP (politicienne)" }
+  }
+}
