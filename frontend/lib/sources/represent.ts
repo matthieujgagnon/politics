@@ -62,7 +62,12 @@ export async function lookupRidingByPostalCode(rawPostalCode: string): Promise<R
     return { ridingName: cached.riding_name, province: cached.province, matchType: "concordance" };
   }
 
-  const url = `${REPRESENT_BASE}/postcodes/${normalized}/?sets=federal-electoral-districts&format=json`;
+  // Confirmed live (2026-09): the plain "federal-electoral-districts" set
+  // is stuck on 2017-era (pre-2022-redistribution) boundaries - its own
+  // boundary-set metadata says last_updated 2017-08-23. This dedicated
+  // 2023-representation-order set is the current one; verified against
+  // /boundary-sets/?format=json&limit=524, filtered for "federal".
+  const url = `${REPRESENT_BASE}/postcodes/${normalized}/?sets=federal-electoral-districts-2023-representation-order&format=json`;
   const data = await fetchJson<RepresentPostcodeResponse>(url);
 
   // Represent docs: concordance boundaries come from official government
