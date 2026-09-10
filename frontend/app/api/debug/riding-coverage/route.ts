@@ -5,14 +5,12 @@ import { fetchJson } from "@/lib/http";
 // Temporary diagnostic, not a permanent feature: checks how many of
 // Represent's federal ridings resolve to a current MP via the real
 // lib/riding-match.ts logic (not a reimplementation), across the actual
-// data. Built to answer one question - does the Hochelaga-style
-// substring fallback generalize, or was that a one-off? - and safe to
-// delete once that's confirmed.
-//
-// The boundaries list endpoint/shape below is a best-effort guess, same
-// caveat as the rest of lib/sources/*.ts: not confirmed live before this
-// was written. If it 404s or comes back oddly shaped, that's the first
-// thing to check.
+// data. Originally built to check whether the Hochelaga-style substring
+// fallback generalizes; that investigation found the plain
+// "federal-electoral-districts" set was stuck on 2017-era boundaries and
+// pointed lib/sources/represent.ts at federal-electoral-districts-2023-
+// representation-order instead. This now re-checks coverage against
+// that same corrected set. Safe to delete once coverage looks right.
 
 interface RepresentBoundary {
   name: string;
@@ -24,7 +22,7 @@ interface RepresentBoundariesResponse {
 export async function GET() {
   const [boundariesData, politicians] = await Promise.all([
     fetchJson<RepresentBoundariesResponse>(
-      "https://represent.opennorth.ca/boundaries/federal-electoral-districts/?format=json&limit=400"
+      "https://represent.opennorth.ca/boundaries/federal-electoral-districts-2023-representation-order/?format=json&limit=400"
     ),
     getCurrentPoliticians(),
   ]);
